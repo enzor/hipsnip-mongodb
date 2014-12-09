@@ -17,62 +17,62 @@
 # limitations under the License.
 #
 
-action :run do
-  node_ip = new_resource.node_ip
-  port = new_resource.port
-  username = new_resource.admin_user
-  password = new_resource.admin_pass
-  auth_enabled = node['mongodb']['auth_enabled']
+# action :run do
+#   node_ip = new_resource.node_ip
+#   port = new_resource.port
+#   username = new_resource.admin_user
+#   password = new_resource.admin_pass
+#   auth_enabled = node['mongodb']['auth_enabled']
 
-  # If not passed in, load defaults from node attributes
-  username = node['mongodb']['admin_user']['name'] if username.empty?
-  password = node['mongodb']['admin_user']['password'] if password.empty?
+#   # If not passed in, load defaults from node attributes
+#   username = node['mongodb']['admin_user']['name'] if username.empty?
+#   password = node['mongodb']['admin_user']['password'] if password.empty?
 
-  Chef::Log.info "Checking MongoDB node at #{node_ip}:#{port}"
+#   Chef::Log.info "Checking MongoDB node at #{node_ip}:#{port}"
 
-  if auth_enabled
-    if username.empty? || password.empty? # If we still don't have any credentials (unlikely)
-      raise 'You must pass in "admin_user" and "admin_pass" for the health check if auth is enabled'
-    end
-  end
+#   if auth_enabled
+#     if username.empty? || password.empty? # If we still don't have any credentials (unlikely)
+#       raise 'You must pass in "admin_user" and "admin_pass" for the health check if auth is enabled'
+#     end
+#   end
 
-  retries = 0
+#   retries = 0
 
-  begin
-    connection = ::Mongo::MongoClient.new(node_ip, port, :slave_ok => true)
-    db = connection['admin']
+#   begin
+#     connection = ::Mongo::MongoClient.new(node_ip, port, :slave_ok => true)
+#     db = connection['admin']
 
-    if auth_enabled
-      begin
-        db.authenticate(username, password)
-      rescue ::Mongo::AuthenticationError
-        # Fail silently
-        # This could be a genuine failure, or it could just be that
-        # the credential setup provider hasn't run yet. If this really
-        # is a failure, the serverStatus command below will catch it.
-        Chef::Log.warn("Authentication to MongoDB node at #{node_ip}:#{port} failed")
-      end
-    end
+#     if auth_enabled
+#       begin
+#         db.authenticate(username, password)
+#       rescue ::Mongo::AuthenticationError
+#         # Fail silently
+#         # This could be a genuine failure, or it could just be that
+#         # the credential setup provider hasn't run yet. If this really
+#         # is a failure, the serverStatus command below will catch it.
+#         Chef::Log.warn("Authentication to MongoDB node at #{node_ip}:#{port} failed")
+#       end
+#     end
 
-    res = db.command({'serverStatus' => 1})
-    raise "serverStatus command failed on #{node_ip}:#{port}" if res.empty? or res['ok'] != 1
-    connection.close
-  rescue ::Mongo::ConnectionFailure
-    Chef::Log.warn "Failed to connect to MongoDB node at #{node_ip}:#{port}"
+#     res = db.command({'serverStatus' => 1})
+#     raise "serverStatus command failed on #{node_ip}:#{port}" if res.empty? or res['ok'] != 1
+#     connection.close
+#   rescue ::Mongo::ConnectionFailure
+#     Chef::Log.warn "Failed to connect to MongoDB node at #{node_ip}:#{port}"
 
-    if retries < node['mongodb']['node_check']['retries']
-      retries += 1
-      sleep_time = retries * node['mongodb']['node_check']['timeout']
+#     if retries < node['mongodb']['node_check']['retries']
+#       retries += 1
+#       sleep_time = retries * node['mongodb']['node_check']['timeout']
 
-      Chef::Log.info "Waiting #{sleep_time} seconds and retrying..."
-      sleep(sleep_time)
-      retry
-    end
+#       Chef::Log.info "Waiting #{sleep_time} seconds and retrying..."
+#       sleep(sleep_time)
+#       retry
+#     end
 
-    raise "MongoDB node at #{node_ip}:#{port} appears to be down"
-  end
+#     raise "MongoDB node at #{node_ip}:#{port} appears to be down"
+#   end
 
-  Chef::Log.info "MongoDB node at #{node_ip}:#{port} is alive and well!"
+#   Chef::Log.info "MongoDB node at #{node_ip}:#{port} is alive and well!"
 
-  new_resource.updated_by_last_action(true)
-end
+#   new_resource.updated_by_last_action(true)
+# end
